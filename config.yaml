@@ -1,0 +1,11 @@
+listen: :8080
+auth:
+  type: password
+  password: "MyStrongPassword123"
+tls:
+  cert: /etc/hysteria/cert.crt
+  key: /etc/hysteria/cert.key
+masquerade:
+  type: proxy
+  proxy:
+    url: https://bing.com
