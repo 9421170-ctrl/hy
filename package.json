@@ -1,0 +1,7 @@
+{
+  "name": "hy2",
+  "version": "1.0.0",
+  "scripts": {
+    "start": "sh start.sh"
+  }
+}
