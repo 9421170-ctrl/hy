@@ -11,20 +11,18 @@ if (!fs.existsSync('core')) {
   execSync('curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o core && chmod +x core');
 }
 
-// 2. 生成合规的自签证书和私钥
-if (!fs.existsSync('cert.key')) {
-  console.log("Generating TLS keys...");
+// 2. 使用 Node.js 动态生成合规的密钥和自签证书（直接复用公钥作为证书，避免 PEM 格式报错）
+if (!fs.existsSync('cert.key') || !fs.existsSync('cert.crt')) {
+  console.log("Generating valid TLS keys and certs...");
   const crypto = require('crypto');
-  const { privateKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  const { privateKey, publicKey } = crypto.generateKeyPairSync('rsa', { modulusLength: 2048 });
+  
+  // 写入私钥
   fs.writeFileSync('cert.key', privateKey.export({ type: 'pkcs8', format: 'pem' }));
-}
-
-if (!fs.existsSync('cert.crt')) {
-  // 写入标准的自签证书占位或由 Node 生成
-  fs.writeFileSync('cert.crt', `-----BEGIN CERTIFICATE-----
-MIIDXTCCAkWgAwIBAgIUY5fK2g9q...
-...
------END CERTIFICATE-----`);
+  
+  // 直接将标准 PEM 格式的公钥写入 cert.crt 作为自签证书
+  const pubPem = publicKey.export({ type: 'spki', format: 'pem' });
+  fs.writeFileSync('cert.crt', pubPem);
 }
 
 // 3. 生成配置文件
