@@ -1,36 +1,17 @@
 const { execSync, exec } = require('child_process');
 const fs = require('fs');
 
-console.log("Initializing Hysteria 2 deployment service...");
+console.log("Initializing Hysteria 2 service...");
 
 const port = process.env.PORT || 8080;
 
-// 1. 自动下载 Hysteria 2 核心并赋予执行权限
+// 1. 如果本地没有核心，则下载 Hysteria 2 核心
 if (!fs.existsSync('core')) {
   console.log("Downloading Hysteria 2 core...");
   execSync('curl -L https://github.com/apernet/hysteria/releases/latest/download/hysteria-linux-amd64 -o core && chmod +x core');
 }
 
-// 2. 动态安装并调用 selfsigned 库生成绝对合规的自签证书，彻底解决所有证书校验报错
-if (!fs.existsSync('cert.crt') || !fs.existsSync('cert.key')) {
-  console.log("Installing selfsigned generator package...");
-  try {
-    execSync('npm install selfsigned --no-save', { stdio: 'inherit' });
-  } catch (e) {
-    console.log("npm install note: continuing...");
-  }
-
-  console.log("Generating valid X.509 TLS certificates...");
-  const selfsigned = require('selfsigned');
-  const attrs = [{ name: 'commonName', value: 'bing.com' }];
-  const pems = selfsigned.generate(attrs, { days: 365 });
-
-  fs.writeFileSync('cert.crt', pems.cert);
-  fs.writeFileSync('cert.key', pems.private);
-  console.log("TLS certificates generated successfully.");
-}
-
-// 3. 写入标准的 Hysteria 2 配置文件（绑定平台分配的端口）
+// 2. 动态生成配置文件（直接使用仓库里自带的 cert.crt 和 cert.key）
 const configContent = `
 listen: :${port}
 auth:
@@ -49,7 +30,7 @@ fs.writeFileSync('config.yaml', configContent);
 
 console.log(`Starting Hysteria 2 server on port ${port}...`);
 
-// 4. 启动核心进程并重定向输出，保持常驻
+// 3. 启动核心进程并常驻
 const child = exec('./core server --config config.yaml');
 child.stdout.pipe(process.stdout);
 child.stderr.pipe(process.stderr);
