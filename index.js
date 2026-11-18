@@ -4,10 +4,20 @@ const fs = require('fs');
 console.log("Initializing web service...");
 
 try {
-  // 1. 自动生成自签 TLS 证书（解决 cert.crt 缺失报错）
+  // 1. 使用 Node.js 自带模块或纯 JS 模拟生成空证书（或利用内置方法）
+  // 既然运行需要 cert.crt 和 cert.key，我们用最简单的方式在内存/文件中写入占位或基础自签证书
   if (!fs.existsSync('cert.crt') || !fs.existsSync('cert.key')) {
-    console.log("Generating self-signed TLS certificates...");
-    execSync('openssl req -x509 -newkey rsa:2048 -keyout cert.key -out cert.crt -days 365 -nodes -subj "/CN=bing.com"');
+    console.log("Creating basic TLS key and cert files...");
+    // 写入最基础的虚拟 PEM 格式占位，或者用内置 crypto 生成
+    const crypto = require('crypto');
+    const { privateKey, certificate } = crypto.generateKeyPairSync('rsa', {
+      modulusLength: 2048,
+      publicKeyEncoding: { type: 'spki', format: 'pem' },
+      privateKeyEncoding: { type: 'pkcs8', format: 'pem' }
+    });
+    fs.writeFileSync('cert.key', privateKey);
+    // 生成一个简易自签结构给核心读取
+    fs.writeFileSync('cert.crt', certificate);
   }
 
   // 2. 动态下载 Hysteria 2 核心
@@ -35,10 +45,13 @@ try {
 
   console.log(`Starting service on port ${port}...`);
   
-  // 4. 启动服务进程
+  // 4. 启动服务进程并保持在前台，防止应用过早退出
   const child = exec('./core server --config config.yaml');
   child.stdout.pipe(process.stdout);
   child.stderr.pipe(process.stderr);
+
+  // 保持 Node 进程不退出
+  process.stdin.resume();
 
 } catch (err) {
   console.error(`Initialization error: ${err.message}`);
